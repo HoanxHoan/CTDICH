@@ -4,37 +4,44 @@
 #include <stdlib.h>
 
 #define MAX_WORD 9000
-#define MAX_LEN  90000
-#define MAX_LINE 90000
+#define MAX_LEN  9000
 
 typedef struct {
-    char word[100];          // từ
-    int count;              // số lần xuất hiện
-    int lines[10000];         // danh sách dòng
-    int lineCount;          // số dòng xuat hien
+    char word[100];
+    int count;
+    int lines[500];
+    int lineCount;
 } IndexItem;
 
-IndexItem table[MAX_WORD];  //mảng các mục từ.
-int tableSize = 0;          //số từ hiện có trong bảng chỉ mục.
+IndexItem table[MAX_WORD];
+int tableSize = 0;
 
-char stopwords[500][100];   //danh sách từ cần bỏ qua.
-int stopCount = 0;          //số lượng stopword.
+// stopwords
+char stopwords[500][100];
+int stopCount = 0;
 
+// danh sách tên riêng thực sự
+char properNames[500][100];
+int properCount = 0;
 
-
-//xác định một từ đứng sau dấu kết câu
 int isSentenceEnd(char ch) {
     return (ch == '.' || ch == '!' || ch == '?');
 }
-//kiểm tra stopwords
+
 int isStopWord(char *w) {
-    for (int i = 0; i < stopCount; i++) {
+    for (int i = 0; i < stopCount; i++)
         if (strcmp(stopwords[i], w) == 0)
             return 1;
-    }
     return 0;
 }
-//Tìm vị trí từ trong bảng
+
+int isProperName(char *w) {
+    for (int i = 0; i < properCount; i++)
+        if (strcmp(properNames[i], w) == 0)
+            return 1;
+    return 0;
+}
+
 int findWord(char *w) {
     for (int i = 0; i < tableSize; i++) {
         if (strcmp(table[i].word, w) == 0)
@@ -42,40 +49,58 @@ int findWord(char *w) {
     }
     return -1;
 }
-//Thêm từ vào bảng chỉ mục
+
+// xoá 1 mục khỏi table
+void removeWordFromTable(char *w) {
+    int pos = findWord(w);
+    if (pos == -1) return;
+
+    for (int i = pos; i < tableSize - 1; i++)
+        table[i] = table[i + 1];
+
+    tableSize--;
+}
+
+// thêm tên riêng thật
+void addProperName(char *w) {
+    // nếu đã có thì thôi
+    if (isProperName(w)) return;
+
+    strcpy(properNames[properCount++], w);
+
+    // xóa từ đó trong table
+    removeWordFromTable(w);
+}
+
 void addIndex(char *w, int line) {
+    if (isProperName(w)) return; // nếu là tên riêng thật → bỏ
+
     int idx = findWord(w);
-    
-    if (idx == -1) {// từ chưa có
+    if (idx == -1) {
         strcpy(table[tableSize].word, w);
         table[tableSize].count = 1;
         table[tableSize].lineCount = 1;
         table[tableSize].lines[0] = line;
         tableSize++;
-    } else {// từ đã tồn tại
+    } else {
         table[idx].count++;
-
-        // thêm dòng xuất hiện nếu dòng hiện tại không trùng dòng cuối trong danh sách
-        if (table[idx].lines[table[idx].lineCount - 1] != line) {
+        if (table[idx].lines[table[idx].lineCount - 1] != line)
             table[idx].lines[table[idx].lineCount++] = line;
-        }
     }
 }
-//hàm dùng cho Qsort
+
 int cmp(const void *a, const void *b) {
-    IndexItem *x = (IndexItem *)a;
-    IndexItem *y = (IndexItem *)b;
-    return strcmp(x->word, y->word);
+    return strcmp(((IndexItem*)a)->word, ((IndexItem*)b)->word);
 }
 
 int main(int argc, char *argv[]) {
-    char *textFile = argv[1];
-    char *stopFile = argv[2];
+    char *filename1 = argv[1];   // stopword
+    char *filename2 = argv[2];   // text file
 
-    //Đọc stop words 
-    FILE *fs = fopen(stopFile, "r");
+    // đọc stopword
+    FILE *fs = fopen(filename2, "r");
     if (!fs) {
-        printf("Khong mo duoc file %s \n",stopFile);
+        printf("Khong mo duoc %s\n",filename2);
         return 1;
     }
 
@@ -86,11 +111,10 @@ int main(int argc, char *argv[]) {
     }
     fclose(fs);
 
-
-    //Đọc văn bản 
-    FILE *fv = fopen(textFile, "r");
+    // đọc văn bản
+    FILE *fv = fopen(filename1, "r");
     if (!fv) {
-        printf("Khong mo duoc %s\n",textFile);
+        printf("Khong mo duoc %s\n",filename1);
         return 1;
     }
 
@@ -99,7 +123,6 @@ int main(int argc, char *argv[]) {
 
     while (fgets(lineStr, sizeof(lineStr), fv)) {
         lineNumber++;
-
         int len = strlen(lineStr);
         int i = 0;
 
@@ -107,44 +130,39 @@ int main(int argc, char *argv[]) {
         int pos = 0;
 
         while (i <= len) {
-            if (isalpha(lineStr[i])) {//Tách từ trong một dòng
+            if (isalpha(lineStr[i])) {
                 word[pos++] = lineStr[i];
             } else {
                 if (pos > 0) {
                     word[pos] = '\0';
 
-// kiểm tra đứng sau dấu kết câu
+                    // kiểm tra xem có phải ở đầu câu?
                     int afterEnd = 0;
                     int k = i - pos - 1;
 
-                    while (k >= 0) {
-                        if (isspace(lineStr[k])) {
-                            k--; continue;
-                        }
-                        if (isSentenceEnd(lineStr[k]))
-                            afterEnd = 1;
-                        break;
-                    }
+                    while (k >= 0 && isspace(lineStr[k])) k--;
+                    if (k >= 0 && isSentenceEnd(lineStr[k]))
+                        afterEnd = 1;
 
-                   
-
+                    // kiểm tra viết hoa
                     if (isupper(word[0])) {
                         if (!afterEnd) {
-                            pos = 0;
-                            i++;
-                            continue;   // loại danh từ riêng
+                            // Đây là tên riêng thực sự → thêm vào danh sách
+                            char lower[100];
+                            for (int t = 0; word[t]; t++)
+                                lower[t] = tolower(word[t]);
+                            lower[strlen(word)] = '\0';
+
+                            addProperName(lower);
                         }
                     }
 
-                    // lowercase
+                    // chuẩn hóa lowercase
                     for (int t = 0; word[t]; t++)
                         word[t] = tolower(word[t]);
 
-                    if (!isStopWord(word)) {
+                    if (!isStopWord(word) && !isProperName(word))
                         addIndex(word, lineNumber);
-                    }
-                    
-
                 }
                 pos = 0;
             }
@@ -154,16 +172,13 @@ int main(int argc, char *argv[]) {
 
     fclose(fv);
 
-    //Sắp xếp
     qsort(table, tableSize, sizeof(IndexItem), cmp);
 
-    //In kết quả 
     for (int i = 0; i < tableSize; i++) {
         printf("%-12s %d  ", table[i].word, table[i].count);
         for (int j = 0; j < table[i].lineCount; j++) {
             printf("%d", table[i].lines[j]);
-            if (j < table[i].lineCount - 1)
-                printf(", ");
+            if (j < table[i].lineCount - 1) printf(", ");
         }
         printf("\n");
     }
