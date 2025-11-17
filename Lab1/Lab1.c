@@ -21,6 +21,7 @@ char stopwords[500][100];   //danh sách từ cần bỏ qua.
 int stopCount = 0;          //số lượng stopword.
 
 
+
 //xác định một từ đứng sau dấu kết câu
 int isSentenceEnd(char ch) {
     return (ch == '.' || ch == '!' || ch == '?');
@@ -112,33 +113,37 @@ int main(int argc, char *argv[]) {
                 if (pos > 0) {
                     word[pos] = '\0';
 
-                    // kiểm tra xem từ đứng sau dấu câu
+// kiểm tra đứng sau dấu kết câu
                     int afterEnd = 0;
                     int k = i - pos - 1;
 
                     while (k >= 0) {
                         if (isspace(lineStr[k])) {
-                            k--;
-                            continue;
+                            k--; continue;
                         }
                         if (isSentenceEnd(lineStr[k]))
                             afterEnd = 1;
                         break;
                     }
 
-                    // loại danh từ riêng
-                    if (isupper(word[0]) ) {
-                        // do nothing
-                    } else {
-                        // chuyển lowercase
-                        for (int t = 0; word[t]; t++)
-                            word[t] = tolower(word[t]);
+                   
 
-                        // bỏ stop-word
-                        if (!isStopWord(word)) {
-                            addIndex(word, lineNumber);
+                    if (isupper(word[0])) {
+                        if (!afterEnd) {
+                            pos = 0;
+                            i++;
+                            continue;   // loại danh từ riêng
                         }
                     }
+
+                    // lowercase
+                    for (int t = 0; word[t]; t++)
+                        word[t] = tolower(word[t]);
+
+                    if (!isStopWord(word)) {
+                        addIndex(word, lineNumber);
+                    }
+                    
 
                 }
                 pos = 0;
