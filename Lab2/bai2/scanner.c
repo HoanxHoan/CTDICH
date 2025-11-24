@@ -355,7 +355,9 @@ void printToken(Token *token) {
   case KW_WHILE: printf("KW_WHILE\n"); break;
   case KW_DO: printf("KW_DO\n"); break;
   case KW_FOR: printf("KW_FOR\n"); break;
-  case KW_TO: printf("KW_TO\n"); break;
+  case KW_TO: printf("KW_TO\n"); break; 
+  case KW_UNTIL: printf("KW_UNTIL\n"); break;
+  case KW_REPEAT: printf("KW_REPEAT\n"); break;
 
   case SB_SEMICOLON: printf("SB_SEMICOLON\n"); break;
   case SB_COLON: printf("SB_COLON\n"); break;
