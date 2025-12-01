@@ -1,0 +1,13 @@
+Program Example5;
+Var 
+   a : Integer;
+   b : Integer;
+   c : Integer;
+BEGIN
+a,b,c := 1,2,3;
+a := 5;
+REPEAT
+  x := x + 1;
+UNTIL
+  x < y;
+End.
