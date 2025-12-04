@@ -421,6 +421,10 @@ void compileRepeatSt(void) {
   // TODO
   eat(KW_REPEAT);
   compileStatement();
+  while (lookAhead->tokenType == SB_SEMICOLON) {
+    eat(SB_SEMICOLON);
+    compileStatement();
+  }
   eat(KW_UNTIL);
   compileCondition();
   assert("Repaet statement pased ....");
